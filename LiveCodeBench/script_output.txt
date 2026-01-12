@@ -1,0 +1,9 @@
+
+--- STDERR ---
+Traceback (most recent call last):
+  File "C:\Users\biswa\OneDrive\Desktop\LiveCodeBench-V6\LiveCodeBench\solution.py", line 33, in <module>
+    solve()
+    ~~~~~^^
+  File "C:\Users\biswa\OneDrive\Desktop\LiveCodeBench-V6\LiveCodeBench\solution.py", line 10, in solve
+    n = int(data[idx])
+ValueError: invalid literal for int() with base 10: 'abc'
