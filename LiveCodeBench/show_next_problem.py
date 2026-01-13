@@ -97,10 +97,11 @@ def show_next_problem():
 
     print("\n" + "="*70)
     print(f"\nWorkflow:")
-    print(f"1. python test_single_problem.py <problem_index>")
-    print(f"   → This generates solution.py and script_output.txt")
-    print(f"\n2. python auto_full_log.py {idx} --passed")
-    print(f"   → Or: python auto_full_log.py {idx} --failed --notes 'reason'")
+    print(f"1. Paste solution code into 'solution.py'")
+    print(f"   (You can use the file in Root or LiveCodeBench folder)")
+    print(f"\n2. Run and Log:")
+    print(f"   python run_and_log.py {idx} --passed")
+    print(f"   → Or: python run_and_log.py {idx} --failed --error 'Wrong Answer'")
     print(f"\nThen run: python show_next_problem.py")
     print("="*70 + "\n")
 

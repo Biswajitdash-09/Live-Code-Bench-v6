@@ -34,7 +34,63 @@ def get_test_input_from_problems(problem_index):
     
     return None
 
-def run_and_log(problem_index, passed=True, execution_time_ms=None, error_type=None, notes=""):
+import hashlib
+
+def check_for_stale_code(solution_file, force=False):
+    """
+    Check if the current solution is identical to the previous one in cora_results.json
+    Returns: True if code is fresh (or forced), False if stale
+    """
+    if force:
+        return True
+        
+    base_dir = Path(__file__).parent
+    results_file = base_dir / "cora_results.json"
+    
+    if not results_file.exists() or not solution_file.exists():
+        return True
+        
+    # Read current code
+    with open(solution_file, 'r') as f:
+        current_code = f.read().strip()
+        
+    if not current_code:
+        print("❌ Error: solution.py is empty")
+        return False
+        
+    current_hash = hashlib.md5(current_code.encode()).hexdigest()
+    
+    try:
+        with open(results_file, 'r') as f:
+            results = json.load(f)
+            
+        if not results:
+            return True
+            
+        # Get last result
+        last_result = results[-1]
+        last_code = last_result.get("cora_solution", "").strip()
+        
+        # Compare
+        if not last_code:
+            return True
+            
+        last_hash = hashlib.md5(last_code.encode()).hexdigest()
+        
+        if current_hash == last_hash:
+            print(f"\n❌ CRITICAL ERROR: Stale Solution Detected!")
+            print(f"   The code in 'solution.py' is IDENTICAL to the solution for the previous problem:")
+            print(f"   Previous Problem: #{last_result.get('index')} - {last_result.get('title')}")
+            print(f"\n   Did you forget to paste the new code from Cora?")
+            print(f"   Use --force to override this check if you really mean to submit the same code.")
+            return False
+            
+    except Exception as e:
+        print(f"⚠️ Warning: Could not check for stale code: {e}")
+        
+    return True
+
+def run_and_log(problem_index, passed=True, execution_time_ms=None, error_type=None, notes="", force=False):
     """
     Run solution.py, save output, and auto-log the result
     """
@@ -47,17 +103,48 @@ def run_and_log(problem_index, passed=True, execution_time_ms=None, error_type=N
     
     # Check for solution.py in parent folder (where Cora writes)
     parent_solution = base_dir.parent / "solution.py"
-    
-    if parent_solution.exists():
-        # Auto-copy from parent folder
+
+    # Bidirectional Sync Logic
+    if parent_solution.exists() and solution_file.exists():
+        parent_mtime = parent_solution.stat().st_mtime
+        solution_mtime = solution_file.stat().st_mtime
+        
+        if solution_mtime > parent_mtime:
+            # Local is newer -> Copy to Parent
+            try:
+                shutil.copy2(solution_file, parent_solution)
+                print(f"📤 Synced: Local solution.py → Parent folder (Local was newer)")
+            except Exception as e:
+                print(f"⚠️ Warning: Could not update parent file: {e}")
+        elif parent_mtime > solution_mtime:
+            # Parent is newer -> Copy to Local
+            shutil.copy2(parent_solution, solution_file)
+            print(f"📥 Synced: Parent solution.py → Local folder (Parent was newer)")
+        else:
+            # Times match (or identical), assume synced
+            pass
+            
+    elif parent_solution.exists() and not solution_file.exists():
+        # Only parent exists -> Copy to Local
         shutil.copy2(parent_solution, solution_file)
         print(f"📥 Auto-copied solution.py from parent folder")
-    
-    # Check if solution.py exists
+        
+    elif solution_file.exists() and not parent_solution.exists():
+        # Only local exists -> Copy to Parent
+        try:
+            shutil.copy2(solution_file, parent_solution)
+            print(f"📤 Auto-copied solution.py to parent folder")
+        except Exception as e:
+            print(f"⚠️ Warning: Could not create parent file: {e}")
+            
+    # Check if solution.py exists (after sync attempts)
     if not solution_file.exists():
         print(f"❌ Error: solution.py not found!")
-        print(f"   Please paste CORA's code into solution.py first")
-        print(f"   Or save it to: {parent_solution}")
+        print(f"   Please paste CORA's code into solution.py (in Root or LiveCodeBench folder)")
+        return False
+        
+    # STALE CODE CHECK
+    if not check_for_stale_code(solution_file, force):
         return False
     
     # Create or check test_input.txt
@@ -138,7 +225,7 @@ def run_and_log(problem_index, passed=True, execution_time_ms=None, error_type=N
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python run_and_log.py <problem_index> [--passed|--failed] [--time <ms>] [--error <type>] [--notes '<text>']")
+        print("Usage: python run_and_log.py <problem_index> [--passed|--failed] [--time <ms>] [--error <type>] [--notes '<text>'] [--force]")
         print("Example: python run_and_log.py 1 --passed")
         print("Example: python run_and_log.py 2 --failed --error 'Wrong Answer'")
         sys.exit(1)
@@ -153,7 +240,9 @@ if __name__ == "__main__":
     passed = True
     notes = ""
     execution_time_ms = None
+    execution_time_ms = None
     error_type = None
+    force = False
     
     i = 2
     while i < len(sys.argv):
@@ -186,10 +275,15 @@ if __name__ == "__main__":
                 i += 2
             else:
                 i += 1
+
+        elif arg == "--force":
+            force = True
+            i += 1
         else:
             i += 1
     
     success = run_and_log(problem_index, passed=passed, 
                          execution_time_ms=execution_time_ms, 
-                         error_type=error_type, notes=notes)
+                         error_type=error_type, notes=notes,
+                         force=force)
     sys.exit(0 if success else 1)

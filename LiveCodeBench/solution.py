@@ -1,33 +1,51 @@
-import sys
-
-def solve():
-    data = sys.stdin.read().split()
-    idx = 0
-    t = int(data[idx])
-    idx += 1
+def paintWalls(cost, time):
+    """
+    Calculate minimum cost to paint all walls using paid and free painters.
     
-    for _ in range(t):
-        n = int(data[idx])
-        idx += 1
-        a = list(map(int, data[idx:idx + n]))
-        idx += n
+    Problem: Given n walls with cost[i] and time[i], find minimum cost to paint all walls.
+    - Paid painter: paints wall i in time[i] units, costs cost[i]
+    - Free painter: paints any wall in 1 unit time, costs 0, but only available when paid painter is busy
+    
+    Key insight: When paid painter paints wall i for time[i] units, the free painter
+    can paint time[i] walls during that same period.
+    
+    So if we paint k walls with the paid painter, the free painter can paint sum(time[i]) walls.
+    Constraint: k + sum(time[i]) >= n (total walls must be painted)
+    
+    DP formulation: dp[i][j] = minimum cost to have painted i walls with j free slots available
+    - i: number of walls painted so far (0 to n)
+    - j: number of free painter slots available (0 to n)
+    
+    Transitions:
+    1. Use paid painter for wall i: cost += cost[i], free_slots += time[i]
+    2. Use free painter for wall i: if j > 0, free_slots -= 1
+    
+    Answer: min(dp[n][j]) for all j
+    """
+    n = len(cost)
+    INF = float('inf')
+    
+    # dp[i][j] = minimum cost to have painted i walls with j free slots available
+    dp = [[INF] * (n + 1) for _ in range(n + 1)]
+    dp[0][0] = 0  # Initial state: 0 walls painted, 0 free slots, 0 cost
+    
+    for i in range(n):
+        cost_i = cost[i]
+        time_i = time[i]
         
-        # Initialize by starting with just the first element
-        max_sum = a[0]
-        current_sum = a[0]
-        
-        for i in range(1, n):
-            # If adjacent elements have the same parity, we cannot extend
-            # the current subarray. We must start fresh from the current element.
-            if (a[i] % 2) == (a[i-1] % 2):
-                current_sum = a[i]
-            else:
-                # Different parity - we can append this element to the valid subarray
-                current_sum = current_sum + a[i]
+        for j in range(n + 1):
+            if dp[i][j] == INF:
+                continue
             
-            max_sum = max(max_sum, current_sum)
-        
-        print(max_sum)
-
-if __name__ == "__main__":
-    solve()
+            # Option 1: Use paid painter for wall i
+            # Paint wall i using paid painter, gain time[i] free slots
+            free_slots = min(j + time_i, n)
+            dp[i + 1][free_slots] = min(dp[i + 1][free_slots], dp[i][j] + cost_i)
+            
+            # Option 2: Use free painter for wall i (only if we have slots)
+            # Paint wall i using free painter, consume 1 free slot
+            if j > 0:
+                dp[i + 1][j - 1] = min(dp[i + 1][j - 1], dp[i][j])
+    
+    # Return minimum cost to paint all n walls
+    return min(dp[n])
