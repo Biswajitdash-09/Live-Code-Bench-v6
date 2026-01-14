@@ -1,51 +1,30 @@
-def paintWalls(cost, time):
+from typing import List
+
+def maximumJumps(nums: List[int], target: int) -> int:
     """
-    Calculate minimum cost to paint all walls using paid and free painters.
+    Return the maximum number of jumps to reach the last index.
     
-    Problem: Given n walls with cost[i] and time[i], find minimum cost to paint all walls.
-    - Paid painter: paints wall i in time[i] units, costs cost[i]
-    - Free painter: paints any wall in 1 unit time, costs 0, but only available when paid painter is busy
-    
-    Key insight: When paid painter paints wall i for time[i] units, the free painter
-    can paint time[i] walls during that same period.
-    
-    So if we paint k walls with the paid painter, the free painter can paint sum(time[i]) walls.
-    Constraint: k + sum(time[i]) >= n (total walls must be painted)
-    
-    DP formulation: dp[i][j] = minimum cost to have painted i walls with j free slots available
-    - i: number of walls painted so far (0 to n)
-    - j: number of free painter slots available (0 to n)
-    
-    Transitions:
-    1. Use paid painter for wall i: cost += cost[i], free_slots += time[i]
-    2. Use free painter for wall i: if j > 0, free_slots -= 1
-    
-    Answer: min(dp[n][j]) for all j
+    In one step, you can jump from index i to any index j such that
+    0 <= i < j < n and -target <= nums[j] - nums[i] <= target.
     """
-    n = len(cost)
-    INF = float('inf')
+    n = len(nums)
     
-    # dp[i][j] = minimum cost to have painted i walls with j free slots available
-    dp = [[INF] * (n + 1) for _ in range(n + 1)]
-    dp[0][0] = 0  # Initial state: 0 walls painted, 0 free slots, 0 cost
+    # dp[i] = maximum number of jumps to reach index i
+    dp = [-float('inf')] * n
+    dp[0] = 0  # Starting point with 0 jumps
     
     for i in range(n):
-        cost_i = cost[i]
-        time_i = time[i]
-        
-        for j in range(n + 1):
-            if dp[i][j] == INF:
-                continue
-            
-            # Option 1: Use paid painter for wall i
-            # Paint wall i using paid painter, gain time[i] free slots
-            free_slots = min(j + time_i, n)
-            dp[i + 1][free_slots] = min(dp[i + 1][free_slots], dp[i][j] + cost_i)
-            
-            # Option 2: Use free painter for wall i (only if we have slots)
-            # Paint wall i using free painter, consume 1 free slot
-            if j > 0:
-                dp[i + 1][j - 1] = min(dp[i + 1][j - 1], dp[i][j])
+        # If we can reach index i
+        if dp[i] != -float('inf'):
+            # Try to jump from i to all indices j > i
+            for j in range(i + 1, n):
+                diff = nums[j] - nums[i]
+                if -target <= diff <= target:
+                    # Make a jump to j
+                    if dp[j] < dp[i] + 1:
+                        dp[j] = dp[i] + 1
     
-    # Return minimum cost to paint all n walls
-    return min(dp[n])
+    # Return -1 if we can't reach the last index
+    if dp[n - 1] == -float('inf'):
+        return -1
+    return dp[n - 1]
